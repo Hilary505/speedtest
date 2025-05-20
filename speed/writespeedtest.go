@@ -16,10 +16,8 @@ func WriteResultsToCSV(results <-chan SpeedTestResult, filename string) {
 		return
 	}
 	defer file.Close()
-
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
-
 	// Write header if file is empty
 	if stat, err := file.Stat(); err == nil && stat.Size() == 0 {
 		header := []string{"Timestamp", "Download (Mbps)", "Upload (Mbps)", "Latency (ms)", "Server"}
@@ -27,8 +25,8 @@ func WriteResultsToCSV(results <-chan SpeedTestResult, filename string) {
 			fmt.Printf("Error writing CSV header: %v\n", err)
 			return
 		}
+		writer.Flush()
 	}
-
 	// Process incoming results
 	for result := range results {
 		record := []string{
@@ -38,13 +36,16 @@ func WriteResultsToCSV(results <-chan SpeedTestResult, filename string) {
 			result.Latency.String(),
 			result.ServerName,
 		}
-
 		if err := writer.Write(record); err != nil {
 			fmt.Printf("Error writing to CSV: %v\n", err)
 			continue
 		}
+		// Flush after each write to ensure immediate writing to disk
 		writer.Flush()
-
+		if err := writer.Error(); err != nil {
+			fmt.Printf("Error flushing CSV writer: %v\n", err)
+			continue
+		}
 		fmt.Printf("Result recorded: %s - Download: %.2f Mbps, Upload: %.2f Mbps, Latency: %v\n",
 			result.Timestamp.Format("15:04:05"),
 			result.Download,
